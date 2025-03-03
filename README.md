@@ -87,3 +87,56 @@ git fetch origin
 git merge origin/main
 # Lös konflikter, commit och push
 ```
+
+## Extra Övningar / Hemuppgift
+
+8. **Utöka med Category Model**
+
+   - Skapa en ny branch `feature/category-model`
+   - Skapa en Category model med:
+     - name (String, required)
+     - description (String)
+     - isActive (Boolean, default: true)
+   - Uppdatera Product model med:
+     - category (ObjectId, ref: 'Category')
+   - Skriv tester för Category model
+
+9. **Category API Endpoints**
+
+   - Skapa CRUD endpoints för categories
+   - Implementera följande routes:
+     - GET /categories
+     - GET /categories/:id
+     - POST /categories
+     - PUT /categories/:id
+     - DELETE /categories/:id
+   - Följ samma mönster som products API
+   - Skriv tester för varje endpoint
+
+10. **Relationshantering**
+
+    - Uppdatera GET /products för att populera category
+    - Lägg till filtrering av produkter på category
+    - Hantera vad som händer med produkter när en category tas bort
+    - Skriv tester för:
+      - Populering av category
+      - Filtrering på category
+      - Cascade/restrict beteende vid category borttagning
+
+11. **Förbättra Existerande Tester**
+    - Lägg till flera test cases för edge cases
+    - Implementera proper cleanup mellan tester
+    - Använd beforeEach för att sätta upp testdata
+    - Gruppera relaterade tester med describe blocks
+    - Förbättra testernas läsbarhet med custom matchers
+
+Varje övning ska:
+
+- Implementeras med TDD-metodik
+- Ha välstrukturerade Git commits
+- Följas av en PR med tydlig beskrivning
+- Code reviews ska fokusera på:
+  - Testbarhet
+  - Felhantering
+  - Kodstruktur
+  - Namngivning
