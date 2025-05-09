@@ -9,6 +9,11 @@ const productSchema = new mongoose.Schema(
     price: {
       type: Number,
       required: true,
+      min: [0, "Price must be a positive number"],
+      validate: {
+        validator: Number.isFinite,
+        message: "Price must be a valid number",
+      },
     },
     description: {
       type: String,
@@ -24,3 +29,4 @@ const productSchema = new mongoose.Schema(
 productSchema.index({ name: "text", description: "text" });
 
 module.exports = mongoose.model("Product", productSchema);
+
