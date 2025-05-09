@@ -11,17 +11,25 @@ const categorySchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true,
-    set: function (val) {
-      if (typeof val !== "boolean") {
-        throw new mongoose.Error.ValidatorError({
+  },
+});
+
+
+categorySchema.pre("validate", function (next) {
+  if (this.isActive !== undefined && typeof this.isActive !== "boolean") {
+    return next(
+      new mongoose.Error.ValidationError(
+        new mongoose.Error.ValidatorError({
           message: "isActive must be a boolean",
-        });
-      }
-      return val;
-    }
+          path: "isActive",
+        })
+      )
+    );
   }
+  next();
 });
 
 module.exports = mongoose.model("Category", categorySchema);
+
 
 
