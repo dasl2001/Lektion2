@@ -11,7 +11,9 @@ const productSchema = new mongoose.Schema(
       required: true,
       min: [0, "Price must be a positive number"],
       validate: {
-        validator: Number.isFinite,
+        validator: function (value) {
+          return typeof value === "number" && Number.isFinite(value);
+        },
         message: "Price must be a valid number",
       },
     },
@@ -25,8 +27,8 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-// Add text indexes for search functionality
 productSchema.index({ name: "text", description: "text" });
 
 module.exports = mongoose.model("Product", productSchema);
+
 
