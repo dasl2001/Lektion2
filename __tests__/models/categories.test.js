@@ -57,14 +57,15 @@ describe("Category Model Test Suite", () => {
       name: "Test",
       isActive: "yes"
     });
-    // Om vi kommer hit: testet ska faila
-    throw new Error("Testet skulle ha kastat ett fel men gjorde inte det");
+    throw new Error("Expected validation to fail");
   } catch (err) {
     expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
     expect(err.errors.isActive).toBeDefined();
-    expect(err.errors.isActive.message).toMatch(/boolean/);
+    expect(err.errors.isActive.message).toMatch(/Cast to Boolean failed/);
   }
 });
+
+
 
    
 
