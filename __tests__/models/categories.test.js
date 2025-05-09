@@ -52,11 +52,14 @@ describe("Category Model Test Suite", () => {
     });
 
     test("should fail with non-boolean isActive", async () => {
-      await expect(Category.create({
-        name: "Test",
-        isActive: "yes"
-      })).rejects.toThrow(/isActive must be a boolean/);
-    });
+        
+        await expect(Category.create({
+            name: "Test",
+            isActive: "yes"
+            })).rejects.toThrow("isActive must be a boolean");
+            });
+
+   
 
     test("should fail with empty name string", async () => {
       await expect(Category.create({ name: "", description: "Nope" }))
