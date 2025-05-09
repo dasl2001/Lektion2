@@ -1,15 +1,21 @@
 const mongoose = require("mongoose");
 const request = require("supertest");
 const { MongoMemoryServer } = require("mongodb-memory-server");
-const app = require("../../server");
 const Category = require("../../models/Category");
 
 let mongoServer;
+let app; // vi laddar app först EFTER att vi satt rätt URI
 
 beforeAll(async () => {
+  // Starta in-memory MongoDB och sätt URI
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
-  await mongoose.connect(uri);
+
+  // Använd testdatabasen i appen
+  process.env.MONGODB_URI = uri;
+
+  // Importera app EFTER vi satt testdatabas
+  app = require("../../server");
 });
 
 afterAll(async () => {
