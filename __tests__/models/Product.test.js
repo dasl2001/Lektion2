@@ -28,8 +28,7 @@ describe("Product Model Test Suite", () => {
 
   describe("Validation Tests", () => {
     test("should validate a valid product", async () => {
-      const validProduct = new Product(validProductData);
-      const savedProduct = await validProduct.save();
+      const savedProduct = await Product.create(validProductData);
 
       expect(savedProduct._id).toBeDefined();
       expect(savedProduct.name).toBe(validProductData.name);
@@ -38,58 +37,50 @@ describe("Product Model Test Suite", () => {
     });
 
     test("should fail validation when name is missing", async () => {
-      const productWithoutName = new Product({
+      await expect(Product.create({
         price: 99.99,
         description: "Test Description",
-      });
-
-      let err;
-      try {
-        await productWithoutName.save();
-      } catch (error) {
-        err = error;
-      }
-
-      expect(err).toBeDefined();
-      expect(err.errors.name).toBeDefined();
+      })).rejects.toThrow(/name.*required/);
     });
 
     test("should fail validation for negative prices", async () => {
-      const productWithNegativePrice = new Product({
+      await expect(Product.create({
         name: "Test Product",
         price: -10.99,
         description: "Test Description",
-      });
-
-      await expect(productWithNegativePrice.save()).rejects.toThrow();
+      })).rejects.toThrow("Price must be a positive number");
     });
 
-    test("should fail validation for string price", async () => {
-      const productWithStringPrice = new Product({
+    test("should fail validation for string price (even if numeric)", async () => {
+      await expect(Product.create({
         name: "Test Product",
         price: "99.99",
         description: "Test Description",
-      });
+      })).rejects.toThrow("Price must be a valid number");
+    });
 
-      await expect(productWithStringPrice.save()).rejects.toThrow();
+    test("should fail validation for non-numeric price string", async () => {
+      await expect(Product.create({
+        name: "Test Product",
+        price: "not-a-number",
+        description: "Test Description",
+      })).rejects.toThrow("Price must be a valid number");
     });
   });
 
   describe("CRUD Operation Tests", () => {
     test("should create & retrieve product successfully", async () => {
-      const validProduct = new Product(validProductData);
-      const savedProduct = await validProduct.save();
-
+      const savedProduct = await Product.create(validProductData);
       const foundProduct = await Product.findById(savedProduct._id);
+
       expect(foundProduct).toBeDefined();
       expect(foundProduct.name).toBe(validProductData.name);
     });
 
     test("should update product name successfully", async () => {
-      const product = new Product(validProductData);
-      await product.save();
-
+      const product = await Product.create(validProductData);
       const updatedName = "Updated Product Name";
+
       const updatedProduct = await Product.findByIdAndUpdate(
         product._id,
         { name: updatedName },
@@ -100,8 +91,7 @@ describe("Product Model Test Suite", () => {
     });
 
     test("should handle concurrent updates (last write wins)", async () => {
-      const product = new Product(validProductData);
-      await product.save();
+      const product = await Product.create(validProductData);
 
       const update1 = Product.findByIdAndUpdate(product._id, { price: 199.99 });
       const update2 = Product.findByIdAndUpdate(product._id, { price: 299.99 });
@@ -115,23 +105,25 @@ describe("Product Model Test Suite", () => {
 
   describe("Timestamp Tests", () => {
     test("should have createdAt and updatedAt timestamps", async () => {
-      const product = new Product(validProductData);
-      const savedProduct = await product.save();
+      const product = await Product.create(validProductData);
 
-      expect(savedProduct.createdAt).toBeDefined();
-      expect(savedProduct.updatedAt).toBeDefined();
+      expect(product.createdAt).toBeDefined();
+      expect(product.updatedAt).toBeDefined();
 
-      await Product.findByIdAndUpdate(savedProduct._id, { price: 199.99 });
-      const updatedProduct = await Product.findById(savedProduct._id);
-      expect(updatedProduct.updatedAt.getTime()).toBeGreaterThan(savedProduct.updatedAt.getTime());
+      const updated = await Product.findByIdAndUpdate(
+        product._id,
+        { price: 199.99 },
+        { new: true }
+      );
+
+      expect(updated.updatedAt.getTime()).toBeGreaterThan(product.updatedAt.getTime());
     });
 
     test("should have createdAt equal to updatedAt on creation", async () => {
-      const product = new Product(validProductData);
-      const savedProduct = await product.save();
-
-      expect(savedProduct.createdAt.getTime()).toBe(savedProduct.updatedAt.getTime());
+      const product = await Product.create(validProductData);
+      expect(product.createdAt.getTime()).toBe(product.updatedAt.getTime());
     });
   });
 });
+
 
