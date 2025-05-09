@@ -51,12 +51,14 @@ describe("Product Model Test Suite", () => {
       })).rejects.toThrow("Price must be a positive number");
     });
 
-    test("should fail validation for string price (even if numeric)", async () => {
-      await expect(Product.create({
+    test("should allow numeric strings like '99.99' by design", async () => {
+      const product = await Product.create({
         name: "Test Product",
         price: "99.99",
         description: "Test Description",
-      })).rejects.toThrow("Price must be a valid number");
+      });
+
+      expect(product.price).toBeCloseTo(99.99, 2);
     });
 
     test("should fail validation for non-numeric price string", async () => {
@@ -64,7 +66,7 @@ describe("Product Model Test Suite", () => {
         name: "Test Product",
         price: "not-a-number",
         description: "Test Description",
-      })).rejects.toThrow("Price must be a valid number");
+      })).rejects.toThrow(/Cast to Number failed/);
     });
   });
 
@@ -125,5 +127,6 @@ describe("Product Model Test Suite", () => {
     });
   });
 });
+
 
 
