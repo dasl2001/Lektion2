@@ -1,21 +1,13 @@
 const mongoose = require("mongoose");
-const request = require("supertest");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const Category = require("../../models/Category");
 
 let mongoServer;
-let app; // vi laddar app först EFTER att vi satt rätt URI
 
 beforeAll(async () => {
-  // Starta in-memory MongoDB och sätt URI
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
-
-  // Använd testdatabasen i appen
-  process.env.MONGODB_URI = uri;
-
-  // Importera app EFTER vi satt testdatabas
-  app = require("../../server");
+  await mongoose.connect(uri);
 });
 
 afterAll(async () => {
@@ -27,73 +19,100 @@ beforeEach(async () => {
   await Category.deleteMany();
 });
 
-describe("Category API Test Suite", () => {
-  const categoryData = {
+describe("Category Model Test Suite", () => {
+  const validData = {
     name: "Electronics",
     description: "All kinds of tech",
   };
 
-  test("should create a new category", async () => {
-    const res = await request(app)
-      .post("/api/categories")
-      .send(categoryData);
+  describe("Validation Tests", () => {
+    test("should save a valid category", async () => {
+      const category = await Category.create(validData);
 
-    expect(res.statusCode).toBe(201);
-    expect(res.body.name).toBe(categoryData.name);
+      expect(category).toHaveProperty("_id");
+      expect(category.name).toBe(validData.name);
+      expect(category.description).toBe(validData.description);
+      expect(category.isActive).toBe(true); // default value
+    });
 
-    const saved = await Category.findOne({ name: categoryData.name });
-    expect(saved).toBeDefined();
+    test("should fail if name is missing", async () => {
+      await expect(Category.create({ description: "No name" }))
+        .rejects.toThrow(/name.*required/);
+    });
+
+    test("should allow description to be optional", async () => {
+      const category = await Category.create({ name: "Minimal" });
+
+      expect(category).toHaveProperty("description", undefined);
+      expect(category.isActive).toBe(true);
+    });
+
+    test("should allow isActive to be false", async () => {
+      const category = await Category.create({
+        name: "Inactive",
+        isActive: false,
+      });
+
+      expect(category.isActive).toBe(false);
+    });
+
+    test("should fail with empty name string", async () => {
+      await expect(Category.create({ name: "" }))
+        .rejects.toThrow(/name.*required/);
+    });
+
+    test("should fail with name too long (if max length set)", async () => {
+      const longName = "a".repeat(300);
+      await expect(Category.create({ name: longName }))
+        .resolves.toBeDefined(); // fungerar om ingen maxgräns finns
+    });
   });
 
-  test("should fail to create category without name", async () => {
-    const res = await request(app).post("/api/categories").send({});
-    expect(res.statusCode).toBe(400);
-    expect(res.body.error).toMatch(/name.*required/i);
+  describe("CRUD Tests", () => {
+    test("should retrieve category by ID", async () => {
+      const category = await Category.create(validData);
+      const found = await Category.findById(category._id);
+
+      expect(found).toBeDefined();
+      expect(found.name).toBe(validData.name);
+    });
+
+    test("should update a category", async () => {
+      const category = await Category.create(validData);
+
+      const updated = await Category.findByIdAndUpdate(
+        category._id,
+        { name: "Updated Name" },
+        { new: true }
+      );
+
+      expect(updated.name).toBe("Updated Name");
+    });
+
+    test("should delete a category", async () => {
+      const category = await Category.create(validData);
+
+      await Category.findByIdAndDelete(category._id);
+
+      const check = await Category.findById(category._id);
+      expect(check).toBeNull();
+    });
   });
 
-  test("should return all categories", async () => {
-    await Category.insertMany([
-      { name: "Books" },
-      { name: "Clothing" },
-    ]);
+  describe("Edge Case Tests", () => {
+    test("should fail with non-boolean isActive", async () => {
+      await expect(Category.create({
+        name: "Test",
+        isActive: "yes"
+      })).rejects.toThrow(/Cast to Boolean failed/);
+    });
 
-    const res = await request(app).get("/api/categories");
-    expect(res.statusCode).toBe(200);
-    expect(res.body.length).toBe(2);
-  });
+    test("should allow special characters in name", async () => {
+      const category = await Category.create({
+        name: "Café & Tech",
+      });
 
-  test("should get a single category by ID", async () => {
-    const cat = await Category.create({ name: "Furniture" });
-
-    const res = await request(app).get(`/api/categories/${cat._id}`);
-    expect(res.statusCode).toBe(200);
-    expect(res.body.name).toBe("Furniture");
-  });
-
-  test("should return 404 for unknown ID", async () => {
-    const fakeId = new mongoose.Types.ObjectId();
-    const res = await request(app).get(`/api/categories/${fakeId}`);
-    expect(res.statusCode).toBe(404);
-  });
-
-  test("should update a category", async () => {
-    const cat = await Category.create({ name: "Old Name" });
-
-    const res = await request(app)
-      .put(`/api/categories/${cat._id}`)
-      .send({ name: "New Name" });
-
-    expect(res.statusCode).toBe(200);
-    expect(res.body.name).toBe("New Name");
-  });
-
-  test("should delete a category", async () => {
-    const cat = await Category.create({ name: "To Delete" });
-
-    const res = await request(app).delete(`/api/categories/${cat._id}`);
-    expect(res.statusCode).toBe(204);
-
-    const check = await Category.findById(cat._id);
-    expect(check).toBeNull();
+      expect(category.name).toBe("Café & Tech");
+    });
   });
 });

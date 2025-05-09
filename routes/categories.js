@@ -1,14 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const Category = require("../models/Category");
+const Product = require("../models/Product");
 
-// GET all
+// GET all categories
 router.get("/", async (req, res) => {
   const categories = await Category.find();
   res.json(categories);
 });
 
-// GET one
+// GET one category
 router.get("/:id", async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
@@ -19,7 +20,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST create
+// CREATE category
 router.post("/", async (req, res) => {
   try {
     const category = new Category(req.body);
@@ -30,7 +31,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT update
+// UPDATE category
 router.put("/:id", async (req, res) => {
   try {
     const updated = await Category.findByIdAndUpdate(req.params.id, req.body, {
@@ -44,9 +45,16 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE
+// DELETE category (with restrict behavior)
 router.delete("/:id", async (req, res) => {
   try {
+    const inUse = await Product.findOne({ category: req.params.id });
+    if (inUse) {
+      return res.status(400).json({
+        error: "Cannot delete category: it is used by existing products.",
+      });
+    }
+
     const deleted = await Category.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: "Not found" });
     res.status(204).send();
@@ -56,3 +64,4 @@ router.delete("/:id", async (req, res) => {
 });
 
 module.exports = router;
+

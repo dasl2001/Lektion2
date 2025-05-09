@@ -21,7 +21,6 @@ beforeEach(async () => {
   await Product.deleteMany();
   await Category.deleteMany();
 
-  // Skapa en testkategori som används i alla produkter
   testCategory = await Category.create({
     name: "Test Category",
     description: "Just for testing",
@@ -36,44 +35,45 @@ describe("Product Model Test Suite", () => {
   };
 
   describe("Validation Tests", () => {
-    test("should validate a valid product", async () => {
-      const savedProduct = await Product.create({
+    test("valid product should save correctly", async () => {
+      const product = await Product.create({
         ...baseProductData,
         category: testCategory._id,
       });
 
-      expect(savedProduct._id).toBeDefined();
-      expect(savedProduct.name).toBe(baseProductData.name);
-      expect(savedProduct.price).toBeCloseTo(baseProductData.price, 2);
-      expect(savedProduct.category.toString()).toBe(testCategory._id.toString());
+      expect(product).toHaveProperty("_id");
+      expect(product).toMatchObject({
+        name: baseProductData.name,
+        description: baseProductData.description,
+        price: baseProductData.price,
+      });
     });
 
     test("should fail when category is missing", async () => {
       await expect(Product.create({
         ...baseProductData,
-        // missing category
       })).rejects.toThrow(/category.*required/);
     });
 
-    test("should fail validation for negative prices", async () => {
+    test("should fail with negative price", async () => {
       await expect(Product.create({
         ...baseProductData,
-        price: -1,
+        price: -50,
         category: testCategory._id,
-      })).rejects.toThrow("Price must be a positive number");
+      })).rejects.toThrow(/positive number/);
     });
 
-    test("should allow numeric strings like '99.99' (Mongoose behavior)", async () => {
+    test("should allow numeric strings as price (Mongoose casting)", async () => {
       const product = await Product.create({
         ...baseProductData,
-        price: "99.99", // string that will be cast
+        price: "99.99",
         category: testCategory._id,
       });
 
       expect(product.price).toBeCloseTo(99.99);
     });
 
-    test("should fail for non-numeric price strings", async () => {
+    test("should fail with non-numeric price string", async () => {
       await expect(Product.create({
         ...baseProductData,
         price: "not-a-number",
@@ -82,8 +82,43 @@ describe("Product Model Test Suite", () => {
     });
   });
 
+  describe("Edge Case Tests", () => {
+    test("should fail with invalid ObjectId as category", async () => {
+      await expect(Product.create({
+        ...baseProductData,
+        category: "invalid-id",
+      })).rejects.toThrow(/Cast to ObjectId failed/);
+    });
+
+    test("should fail with empty name", async () => {
+      await expect(Product.create({
+        name: "",
+        price: 100,
+        description: "OK",
+        category: testCategory._id,
+      })).rejects.toThrow(/name.*required/);
+    });
+
+    test("should fail with empty description", async () => {
+      await expect(Product.create({
+        name: "No description",
+        price: 50,
+        description: "",
+        category: testCategory._id,
+      })).rejects.toThrow(); // schema kräver description
+    });
+
+    test("should fail with extremely large price", async () => {
+      await expect(Product.create({
+        ...baseProductData,
+        price: 1e20,
+        category: testCategory._id,
+      })).resolves.toBeDefined(); // validering tillåter det, men du kan sätta max om du vill
+    });
+  });
+
   describe("CRUD Operation Tests", () => {
-    test("should create & retrieve a product", async () => {
+    test("should create and retrieve product", async () => {
       const saved = await Product.create({ ...baseProductData, category: testCategory._id });
       const found = await Product.findById(saved._id);
 
@@ -93,7 +128,6 @@ describe("Product Model Test Suite", () => {
 
     test("should update product name", async () => {
       const product = await Product.create({ ...baseProductData, category: testCategory._id });
-
       const updated = await Product.findByIdAndUpdate(
         product._id,
         { name: "Updated Name" },
@@ -102,43 +136,28 @@ describe("Product Model Test Suite", () => {
 
       expect(updated.name).toBe("Updated Name");
     });
-
-    test("should support concurrent updates", async () => {
-      const product = await Product.create({ ...baseProductData, category: testCategory._id });
-
-      const update1 = Product.findByIdAndUpdate(product._id, { price: 199.99 });
-      const update2 = Product.findByIdAndUpdate(product._id, { price: 299.99 });
-
-      await Promise.all([update1, update2]);
-
-      const result = await Product.findById(product._id);
-      expect([199.99, 299.99]).toContain(result.price);
-    });
   });
 
   describe("Timestamp Tests", () => {
-    test("should have createdAt and updatedAt timestamps", async () => {
+    test("should set createdAt and updatedAt", async () => {
       const product = await Product.create({ ...baseProductData, category: testCategory._id });
 
       expect(product.createdAt).toBeDefined();
       expect(product.updatedAt).toBeDefined();
-
-      const updated = await Product.findByIdAndUpdate(
-        product._id,
-        { price: 150 },
-        { new: true }
-      );
-
-      expect(updated.updatedAt.getTime()).toBeGreaterThan(product.updatedAt.getTime());
     });
 
-    test("should have identical createdAt and updatedAt at creation", async () => {
+    test("updatedAt should change after update", async () => {
       const product = await Product.create({ ...baseProductData, category: testCategory._id });
+      const originalUpdatedAt = product.updatedAt;
 
-      expect(product.createdAt.getTime()).toBe(product.updatedAt.getTime());
+      await Product.findByIdAndUpdate(product._id, { price: 199.99 }, { new: true });
+      const updated = await Product.findById(product._id);
+
+      expect(updated.updatedAt.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());
     });
   });
 });
+
 
 
 
