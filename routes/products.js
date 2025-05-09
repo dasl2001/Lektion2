@@ -2,10 +2,25 @@ const express = require("express");
 const router = express.Router();
 const Product = require("../models/Product");
 
-// GET all products
+// GET all products with optional search filters
 router.get("/", async (req, res) => {
   try {
-    const products = await Product.find();
+    const { name, minPrice, maxPrice } = req.query;
+    const filter = {};
+
+    if (name) {
+      filter.name = { $regex: name, $options: "i" }; // Case-insensitive name search
+    }
+
+    if (minPrice) {
+      filter.price = { ...filter.price, $gte: parseFloat(minPrice) };
+    }
+
+    if (maxPrice) {
+      filter.price = { ...filter.price, $lte: parseFloat(maxPrice) };
+    }
+
+    const products = await Product.find(filter);
     res.json(products);
   } catch (error) {
     res.status(500).json({ error: "Error fetching products" });
@@ -77,3 +92,4 @@ router.delete("/", async (req, res) => {
 });
 
 module.exports = router;
+
