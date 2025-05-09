@@ -11,14 +11,17 @@ const categorySchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true,
-    validate: {
-      validator: function (val) {
-        return typeof val === "boolean";
-      },
-      message: "isActive must be a boolean",
-    },
-  },
+    set: function (val) {
+      if (typeof val !== "boolean") {
+        throw new mongoose.Error.ValidatorError({
+          message: "isActive must be a boolean",
+        });
+      }
+      return val;
+    }
+  }
 });
 
 module.exports = mongoose.model("Category", categorySchema);
+
 
